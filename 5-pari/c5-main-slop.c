@@ -99,7 +99,7 @@ int main(int argc, char * argv [])
 
                     /* This is |S_i| */
                     for(i=3;i<=DEG; i++) {
-                      bounds[i] =  fpow(Dmaxroot + A1*A1/DEG*1.0, i/2.0);
+                      bounds[i] =  fpow(Dmaxroot + A1*A1/(1.0*DEG), i/2.0);
                       /* printf("\nBounds[%1d] = %6.2f ", i, bounds[i]); */
                     }
                     
@@ -264,7 +264,7 @@ printf("%l\n", gissquarerem(td, &sqrtdust)); */
                                                   gnorml2(roots(a,3))) > 0) {
                                           t2count++;
 #endif
-                                          if(isirreducible(a)) { 
+                                          if(polisirreducible(a)) { 
 										    td = absi(discf(a));
 										    if(gcmp(td, bdisc)<=0 && gvaluation(td,stoi(5))== 9) {
 											  pari_fprintf(afile, "%Ps\n", polredabs0(a,0));

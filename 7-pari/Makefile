@@ -1,6 +1,6 @@
 CC = gcc
 
-INFILEPATH=\"/home/jj/Programs/src-C/7-pari/Inputs\"
+INFILEPATH=\"$(CURDIR)/Inputs\"
 
 CFLAGS = -O4 -Wall -I/usr/local/include/pari -L/usr/local/lib \
   -DDEG=7  -DINFILES=$(INFILEPATH)

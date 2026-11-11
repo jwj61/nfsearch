@@ -87,7 +87,7 @@ int main(int argc, char * argv [])
 
                     /* This is |S_i| */
                     for(i=3;i<=DEG; i++) {
-                      bounds[i] =  fpow(Dmaxroot + A1*A1/DEG*1.0, i/2.0);
+                      bounds[i] =  fpow(Dmaxroot + A1*A1/(1.0*DEG), i/2.0);
                       /* printf("\nBounds[%1d] = %6.2f ", i, bounds[i]); */
                     }
 
@@ -113,7 +113,7 @@ int main(int argc, char * argv [])
 
                       /* Since DEG is odd, we normalize here. */
                       if(A1==0) low[DEG] = 0;
-                     verbosity=5; 
+                     /* verbosity=5; */
                       if(verbosity>2) {
                         printf("\nLoop at (%1ld,%1ld) ---> (%1d,%lld), %1d range: %lld to %lld mults [%lld,%lld,%lld]\n",
                                count[1], count[2],
@@ -244,7 +244,7 @@ int main(int argc, char * argv [])
 									  td= discsr(a);
 									  if(!gcmp0(td) /*  &&  Z_issquare(td) */ ) {
 									    postdisc++;
-									    if(isirreducible(a)) {
+									    if(polisirreducible(a)) {
 									      td=absi( discf(a)); 
 									      if( gcmp(td, bigbgen)<=0 ) {
 										  

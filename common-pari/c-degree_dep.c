@@ -1,7 +1,14 @@
 #include <stdio.h>
 #include "c-target.h"
 
-#define min(x,y) (x<y) ? x : y
+#define min(x,y) (((x)<(y)) ? (x) : (y))
+
+/* Newton's method in pohst_thing: relative tolerance, iteration cap,
+   and the safety margins added to the resulting bounds. */
+#define NEWT_TOL          1e-12
+#define NEWT_MAXIT        1000
+#define POHST_REL_MARGIN  1e-9
+#define POHST_ABS_MARGIN  1e-6
 
 #if DEG==6
 #define name "Sextic"
@@ -46,6 +53,7 @@ long
   pohst_thing()
 {
   register int i, j;
+  int       iters;
   double    kpows[8], degroots[DEG+2], dff, newval;
   long      sgn_n, degover2;
   long long absAn;
@@ -60,19 +68,30 @@ long
   for(i=1;i<=degover2; i++)  {    /* Use Newton's method to find some roots */
     degroots[i-1] =  0.9*fpow(Dmaxroot1/DEG, 0.5);
 
-    while((fabs(dff = newt(degroots[i-1], i, kpows[i])) > 0.001) ||
-          (fabs(dff) > 0.001*degroots[i-1]) || (degroots[i-1] < dff)) {
+    /* Solve to near machine precision: the bounds below are very
+       sensitive to these roots, and a loose tolerance makes them too
+       small, which can lose polynomials. */
+    iters = 0;
+    while(((fabs(dff = newt(degroots[i-1], i, kpows[i])) > NEWT_TOL*degroots[i-1]) ||
+           (degroots[i-1] < dff)) && iters < NEWT_MAXIT) {
       if(degroots[i-1] < dff) degroots[i-1] = degroots[i-1]/2.0;
       else degroots[i-1] = degroots[i-1] - dff;
-      
+      iters++;
     }
+    if(iters >= NEWT_MAXIT)
+      fprintf(stderr, "pohst_thing: Newton did not converge (first root, i=%d)\n", i);
   }
 
   for(i=1;i<=degover2; i++)  {    /* Use Newton's method to find more roots */
     degroots[i+degover2-1] = 2.0* fpow(Dmaxroot1/DEG, 0.5) - degroots[i-1];
-    while(fabs(dff = newt(degroots[i+degover2-1], i, kpows[i])) > 0.001) {
+    iters = 0;
+    while((fabs(dff = newt(degroots[i+degover2-1], i, kpows[i]))
+           > NEWT_TOL*degroots[i+degover2-1]) && iters < NEWT_MAXIT) {
       degroots[i+degover2-1] = degroots[i+degover2-1] - dff;
+      iters++;
     }
+    if(iters >= NEWT_MAXIT)
+      fprintf(stderr, "pohst_thing: Newton did not converge (second root, i=%d)\n", i);
   } /* Roots now found by Newton's method */
   
   for(i=1; i<3; i++) {
@@ -91,6 +110,11 @@ long
       }
     }
   }
+
+  /* Every pbounds[i] is used as an upper bound, so enlarging it is
+     safe.  This absorbs the remaining rounding error in the roots. */
+  for(i=1; i<DEG; i++)
+    pbounds[i] = pbounds[i]*(1.0+POHST_REL_MARGIN) + POHST_ABS_MARGIN;
 
   for(i=3; i<DEG; i++)
     pbounds[i] = min(bounds[i], pbounds[i]);

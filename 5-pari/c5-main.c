@@ -95,7 +95,7 @@ int main(int argc, char * argv [])
 
                     /* This is |S_i| */
                     for(i=3;i<=DEG; i++) {
-                      bounds[i] =  fpow(Dmaxroot + A1*A1/DEG*1.0, i/2.0);
+                      bounds[i] =  fpow(Dmaxroot + A1*A1/(1.0*DEG), i/2.0);
                       /* printf("\nBounds[%1d] = %6.2f ", i, bounds[i]); */
                     }
                     
@@ -256,7 +256,7 @@ printf("\n");
                                       gaffect(tdtmp, td);
                                     }
                                     if(gcmp1(td)) {
-                                      if(isirreducible(a)) {
+                                      if(polisirreducible(a)) {
 									    pari_fprintf(afile, "%Ps\n", polredabs0(a,0));
                                         fflush(afile);
 									  }
@@ -271,7 +271,7 @@ printf("%l\n", gissquarerem(td, &sqrtdust)); */
                                                   gnorml2(roots(a,3))) > 0) {
                                           t2count++;
 #endif
-                                          if(isirreducible(a)) {
+                                          if(polisirreducible(a)) {
                                             td=absi( discf(a));
                                             discfcount++;
                                             for(i=0; i<totprimes; i++) {

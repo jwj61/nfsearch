@@ -1,8 +1,14 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 #include <time.h>
 #include "c-target.h"
 
 static long loadcasepntr=0;
+
+/* Size of the buffer that go_fetch_input appends the case name to */
+#define INFILESTR_LEN 256
 
 
 /*
@@ -200,6 +206,10 @@ void getprimelist(int argc, char * argv[] )
   if(argc > 1) {
     jj=1;
     for(ii=1; ii<argc; ii++, jj++) {
+      if(jj > 8) {
+        printf("\nThis program handles at most 8 primes.\n\n");
+        exit(1);
+      }
       plist[jj-1] = atoi(argv[ii]);
       if(!checkprime(plist[jj-1])) {
         if(plist[jj-1]==0) {
@@ -216,6 +226,10 @@ void getprimelist(int argc, char * argv[] )
     printf("\nHow many primes are we talking about? ");
     fflush(stdout);
     totprimes = myreadint();
+    if(totprimes < 1 || totprimes > 8) {
+      printf("\nThis program handles between 1 and 8 primes.\n\n");
+      exit(1);
+    }
     for(jj=0; jj<totprimes; jj++) {
       printf("What is prime number %1d? ", jj+1);
       plist[jj] = myreadint();
@@ -224,6 +238,10 @@ void getprimelist(int argc, char * argv[] )
         exit(1);
       }
     }
+  }
+  if(totprimes < 1 || totprimes > 8) {
+    printf("\nThis program handles between 1 and 8 primes.\n\n");
+    exit(1);
   }
   if(do_slop) {
     printf("\nWhat is the slop factor? ");
@@ -244,7 +262,7 @@ void getsearchcases()
   long j;
   /*  long linecount; */
   int ii;
-  char t[50], outs[50];
+  char t[50], outs[INFILESTR_LEN];
 
   getlogfilename(t);
   if((logfile = fopen(t, "a")) == NULL) {
@@ -285,13 +303,17 @@ void getsearchcases()
       /* maxp is the number of cases for a given prime, and p_inps tells us
          what the cases mean. */
       maxp[ii]= -1;
-      if(ii>0) strcat(outfilename, ".");
-      sprintf(outfilename, "%s%1ld", outfilename, plist[ii]);
+      if(ii>0) strncat(outfilename, ".", sizeof(outfilename)-strlen(outfilename)-1);
+      {
+        char ptmp[32];
+        snprintf(ptmp, sizeof(ptmp), "%1ld", plist[ii]);
+        strncat(outfilename, ptmp, sizeof(outfilename)-strlen(outfilename)-1);
+      }
       while((j=getchar()) != '\n')
         if((j >= 'a' && j <='z') || j == '*') {
           go_fetch_input(ii, j - 'a', outs);
           /* This will have to be fixed to adjust for the name thing */
-          sprintf(outfilename, "%s%s", outfilename, outs);
+          strncat(outfilename, outs, sizeof(outfilename)-strlen(outfilename)-1);
 /*           casepointer[ii+1] = casepointer[ii]+maxp[ii]+1; */
         }
     }
@@ -391,7 +413,7 @@ int is_in_list(long num, long list[]) {
 
 void
 go_fetch_input(long p_index, long wch, char * infilestr) {
-  char buf[100], sms[10];
+  char buf[1024], sms[10];
   FILE *infile;
   int nc, c, k, discexp, old_c, old_d, j, wildfile;
   long disclist[30];
@@ -399,7 +421,7 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
   wildfile = 0;
   if((wch+'a') != '*') {
     splittingmenustring(sms, wch);
-    sprintf(buf, "%s/input%1d_%s.%1ld", INFILES, DEG, sms, plist[p_index]);
+    snprintf(buf, sizeof(buf), "%s/input%1d_%s.%1ld", INFILES, DEG, sms, plist[p_index]);
     infilestr[0] = 'a'+wch;
     infilestr[1] = '\0';
     /* Look for discrim list next */
@@ -408,6 +430,10 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
     j=0;
     ungetc(c, stdin); /* Undo extra reading */
     while(isdigit(c)){ /* Hey, it was a digit */
+      if(j >= 29) {
+        printf("\nToo many discriminant exponents listed.\n\n");
+        exit(1);
+      }
       disclist[j++] = fmyreadintnice(stdin);
       while(((c=getchar())==' ') || c == ',')
         ; /* ate more spaces and commas*/
@@ -417,7 +443,11 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
     k=0;
     if(plist[p_index]<=DEG) {
       while(k<j) { /* Now adjust infilestr if there are special discs */
-        sprintf(infilestr, "%s_%ld", infilestr, disclist[k]);
+        {
+          char dtmp[32];
+          snprintf(dtmp, sizeof(dtmp), "_%ld", disclist[k]);
+          strncat(infilestr, dtmp, INFILESTR_LEN-strlen(infilestr)-1);
+        }
         k++;          
       }
     } else { /*Must be tame, so forget about disclist */
@@ -431,8 +461,8 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
     while(isspace(c=getchar())) ;
     k=0;
     infilestr[k++] = c;
-    while(!isspace(c=getchar())) {
-      infilestr[k++] = c;
+    while(!isspace(c=getchar()) && c != EOF) {
+      if(k < INFILESTR_LEN-1) infilestr[k++] = c;
     }
     ungetc(c, stdin);
     infilestr[k] = '\0';
@@ -445,7 +475,7 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
       We will have to hold them in an array, (terminate with a 0)
       Need a function to see if a number is in the array
     */
-    sprintf(buf, "input%1d_%s.%1ld", DEG, infilestr, plist[p_index]);
+    snprintf(buf, sizeof(buf), "input%1d_%s.%1ld", DEG, infilestr, plist[p_index]);
   }
 
   if((!iswild(wch, plist[p_index])) && wildfile==0)  { /* Tame, use function */
@@ -456,7 +486,15 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
     cases[p_index][maxp[p_index]].init_func(p_index,0,0);
     cases[p_index][maxp[p_index]].discexp = pdata[p_index][0][0];
   } else { /* Use file */
-    if((infile = fopen(buf, "r")) == NULL) {
+    infile = fopen(buf, "r");
+    if(infile == NULL && wildfile) {
+      /* A user-named file: if it is not in the current directory,
+         look in the Inputs directory. */
+      char buf2[1100];
+      snprintf(buf2, sizeof(buf2), "%s/%s", INFILES, buf);
+      infile = fopen(buf2, "r");
+    }
+    if(infile == NULL) {
       printf("\nCannot open file \"%s\".  I quit.\n\n", buf);
       exit(1);
     }
@@ -531,6 +569,10 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
       if(isdigit(nc)) { /* line starting with a digit, load it */
         if(!ALTERNATING || ((discexp % 2) ==0 )) {
           /* loadcasepntr++; */
+          if(loadcasepntr >= MAX_NUM_INDIV_CASES) {
+            printf("\nToo many cases! %ld\n\n",loadcasepntr);
+            exit(1);
+          }
           ungetc(nc, infile);
           for(k=1; k<= DEG; k++)
             caselist[loadcasepntr][k]
@@ -539,10 +581,6 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
           caselist[loadcasepntr][0] = c;
           caselist[loadcasepntr][11] = discexp;
           caselist[loadcasepntr][10] = wch;
-          if(loadcasepntr> MAX_NUM_INDIV_CASES) {
-            printf("\nToo many cases! %ld\n\n",loadcasepntr);
-            exit(1);
-          }
           loadcasepntr++; 
         }
       }
@@ -654,8 +692,9 @@ long long
 intpowmod(long long bse, long expo, long long modulus)
 {
   long j;
-  long long ans=1;
+  long long ans=1 % modulus;
 
+  bse = truemod(bse, modulus);
   for(j=1; j<=expo; j++) ans = (bse * ans) % modulus;
   return(ans);
 }
@@ -675,6 +714,7 @@ gcdtrick(long long aa, long long bb)
 /* Computes the valuation.  No big deal. */
 long myval(long long n, long p)
 {
+  if(n == 0) return(1000000); /* v_p(0) is infinite */
   if((n % p) == 0) return(1+myval(n/p, p)); else return(0);
 }
 
