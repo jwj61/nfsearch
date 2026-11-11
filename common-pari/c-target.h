@@ -249,6 +249,12 @@ long init_all_primes(long , long);
 
 int is_in_list(long, long []);
 
+/* Modular discriminant filter (c-qfilter.c) */
+void qf_setup(long *);
+void qf_newloop(void);
+int qf_test(void);
+extern long qf_tested, qf_rejected;
+
 /*
 int lookup_registry(char *);
 void register_known_funcs();

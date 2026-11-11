@@ -75,6 +75,7 @@ int main(int argc, char * argv [])
                   
                   
                   initcase(j_p); /* This will do the init 0 things */
+                  qf_setup(j_p);  /* modular discriminant filter */
                   /*                  showorefactors(); */  /* Does this still make sense? */
 
                   /*    makeoutfilename(s, j_p);
@@ -233,6 +234,7 @@ printf("\n");
 
                                 /*  ------------  Counter 4 ---------- */
 
+                                qf_newloop();  /* new innermost loop for the filter */
                                 for(count[4] = low[4]; count[4]<= high[4];
                                     count[4]++) {
                                   A4 = arc[4] * count[4] + shift[4];
@@ -242,6 +244,12 @@ printf("\n");
                                   
                                   
                                   polcount++;
+                                  
+                                  
+                                  /* Cheap necessary test before the exact discriminant */
+                                  
+                                  
+                                  if(!qf_test()) { avma = ltop; continue; }
                                   /* take absolute value on the way */
                                   td=absi(discsr(a));
                                   
@@ -355,6 +363,7 @@ printf("%l\n", gissquarerem(td, &sqrtdust)); */
           polcount, timetot, Dmaxroot, postdisc, t2count, discfcount);
   fflush(logfile);
   fclose(afile);
+  printf("\nModular filter: %ld polynomials tested, %ld rejected.", qf_tested, qf_rejected);
   printf("\nDone.");
   printf("\n");
   return 0;

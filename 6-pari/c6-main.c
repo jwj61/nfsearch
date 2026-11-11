@@ -98,6 +98,7 @@ int main(int argc, char * argv [])
                   
                   
                   initcase(j_p); /* This will do the init 0 things */
+                  qf_setup(j_p);  /* modular discriminant filter */
                   /*                  showorefactors(); */  /* Does this still make sense? */
 
                   /*    makeoutfilename(s, j_p);
@@ -202,7 +203,19 @@ int main(int argc, char * argv [])
                           low[3] =  (long long) S2c_lower(-pbounds[3],3);
                           high[3] = (long long) S2c_upper(pbounds[3],3);
 
-                          if(A1==0) low[3] = 0;
+                          /* alpha -> -alpha fixes A1 = 0 and negates A3, so take A3 >= 0;
+                             only raise the lower bound */
+                          if(A1==0 && low[3] < 0) low[3] = 0;
+
+                          /* The roots b = 1/alpha satisfy |e_3(b)| = |A_{n-3}/A_n|, and by
+                             Maclaurin e_3(|b|) <= C(n,3) (sum|b|/n)^3, with sum|b| <= pbounds[1]. */
+                          {
+                            double rbnd = mylabs(An) * 20.0 * fpow(pbounds[1]/6.0, 3.0);
+                            llval = (long long) A2c_upper(rbnd, 3, arc[3]);
+                            if(llval < high[3]) high[3] = llval;
+                            llval = (long long) A2c_lower(-rbnd, 3, arc[3]);
+                            if(llval > low[3]) low[3] = llval;
+                          }
                           
                           /*  ------------  Counter 3 ---------- */
 
@@ -301,6 +314,7 @@ int main(int argc, char * argv [])
                                 */
 
                                 /*  ------------  Counter 5 ---------- */
+                                qf_newloop();  /* new innermost loop for the filter */
                                 for(count[5] =low[5]; count[5]<= high[5];
                                     count[5]++) {
                                   A5 = arc[5] * count[5] + shift[5];
@@ -310,6 +324,12 @@ int main(int argc, char * argv [])
 
 
                                   polcount++;
+
+
+                                  /* Cheap necessary test before the exact discriminant */
+
+
+                                  if(!qf_test()) { avma = ltop; continue; }
                                   
                                   /* take absolute value on the way */
                                   td = absi(discsr(a));
@@ -431,6 +451,7 @@ int main(int argc, char * argv [])
   fclose(afile);
   /*  system("cat .message | mail -s \"Sextic searches\" jj@asu.edu"); */
   
+  printf("\nModular filter: %ld polynomials tested, %ld rejected.", qf_tested, qf_rejected);
   printf("\nDone.");
   printf("\n");
   return 0;

@@ -7,7 +7,7 @@ CFLAGS =  -g -Wall -I/usr/local/include/pari -L/usr/local/lib \
 #CFLAGS =  -O4 -Wall -I/ud/jj/lib/pari/include -L/ud/jj/lib/pari/lib \
 #  -DULONG_NOT_DEFINED
 
-FILES = c-generics.o c-degree_dep.o c3-main.o wild-file.o inc_primes.o \
+FILES = c-generics.o c-qfilter.o c-degree_dep.o c3-main.o wild-file.o inc_primes.o \
         t3.o t21.o \
 #        c-registry.o
 

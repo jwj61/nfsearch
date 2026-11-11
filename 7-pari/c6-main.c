@@ -187,7 +187,9 @@ int main(int argc, char * argv [])
                           low[3] =  (long long) S2c_lower(-pbounds[3],3);
                           high[3] = (long long) S2c_upper(pbounds[3],3);
 
-                          if(A1==0) low[3] = 0;
+                          /* alpha -> -alpha fixes A1 = 0 and negates A3, so take A3 >= 0;
+                             only raise the lower bound */
+                          if(A1==0 && low[3] < 0) low[3] = 0;
                           
                           /*  ------------  Counter 3 ---------- */
 

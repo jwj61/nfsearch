@@ -32,3 +32,11 @@ What is the output?
   * The polynomials in the output file Search... have been put through polredabs, so typically a polynomial will appear multiple times.  It does not check that the polynomials hit the target exactly, so the user may need to filter those out after the fact.
 
 After running the program, the results can be easily read into a gp session with "readvec", and then take "Set" of the list to remove repeats.
+
+Speed-ups
+=========
+
+  * Before the exact discriminant is computed, each polynomial goes through a cheap modular test (common-pari/c-qfilter.c).  For a target field, disc(f) = d_K * (index)^2 and the exponent of each p in S in d_K is fixed by the current case, so disc(f) has a known square class.  For 24 primes q = 1 mod 4 outside S, the program checks that disc(f) is in that class modulo q (whenever q does not divide disc(f)).  The answer depends only on the innermost coefficient modulo q, so it is cached per residue for each innermost loop.  Almost all polynomials are rejected this way, and the exact discriminant is computed only for the rest.  The run summary on the screen reports how many polynomials the filter tested and rejected.
+  * Because the filter uses the discriminant exponents of the current case, fields with a different exponent at some p in S are no longer found incidentally.  They are found in their own case when that case is searched.  The filter is turned off automatically in slop mode, and it can be removed entirely by compiling with -DNO_QFILTER.
+  * In even degree, when A1 = 0 the search takes A3 >= 0 (alpha -> -alpha fixes A1 and negates A3).
+  * In degrees 6 and 7, a_{n-3} is also bounded through the reciprocal roots: |a_{n-3}| <= |a_n| C(n,3) (S_{-1}/n)^3, where S_{-1} is Pohst's bound on the sum of |1/alpha|.

@@ -77,6 +77,7 @@ int main(int argc, char * argv [])
                   
                   
                   initcase(j_p); /* This will do the init 0 things */
+                  qf_setup(j_p);  /* modular discriminant filter */
                   /*                  showorefactors(); */  /* Does this still make sense? */
 
                   /*    makeoutfilename(s, j_p);
@@ -190,6 +191,16 @@ int main(int argc, char * argv [])
                             low[4] =  (long long) S2c_lower(-pbounds[4],4);
                             high[4] = (long long) S2c_upper(btmp,4);
 
+                            /* The roots b = 1/alpha satisfy |e_3(b)| = |A_{n-3}/A_n|, and by
+                               Maclaurin e_3(|b|) <= C(n,3) (sum|b|/n)^3, with sum|b| <= pbounds[1]. */
+                            {
+                              double rbnd = mylabs(An) * 35.0 * fpow(pbounds[1]/7.0, 3.0);
+                              llval = (long long) A2c_upper(rbnd, 4, arc[4]);
+                              if(llval < high[4]) high[4] = llval;
+                              llval = (long long) A2c_lower(-rbnd, 4, arc[4]);
+                              if(llval > low[4]) low[4] = llval;
+                            }
+
 
                             /*  ------------  Counter 4 ---------- */
 
@@ -263,6 +274,7 @@ int main(int argc, char * argv [])
                                     if(llval> low[6]) low[6] = llval;
                                     
 
+                                    qf_newloop();  /* new innermost loop for the filter */
                                     for(count[6] =low[6]; count[6]<= high[6];
                                         count[6]++) {
                                       A6 = arc[6] * count[6] + shift[6];
@@ -273,6 +285,12 @@ int main(int argc, char * argv [])
                                       
 
                                       polcount++;
+                                      
+
+                                      /* Cheap necessary test before the exact discriminant */
+                                      
+
+                                      if(!qf_test()) { avma = ltop; continue; }
                                       /* take absolute value on the way */
                                       td = absi(discsr(a));
                                       /*if(!gcmp0(td) && Z_issquare(td)) { */
@@ -408,6 +426,7 @@ int main(int argc, char * argv [])
   fclose(afile);
   /*  system("cat .message | mail -s \"Septic searches\" jj@asu.edu");*/
   
+  printf("\nModular filter: %ld polynomials tested, %ld rejected.", qf_tested, qf_rejected);
   printf("\nDone.");
   printf("\n");
   return 1;
