@@ -278,7 +278,6 @@ int main(int argc, char * argv [])
                                     for(count[6] =low[6]; count[6]<= high[6];
                                         count[6]++) {
                                       A6 = arc[6] * count[6] + shift[6];
-                                      myaffsi(A6, coefs[6]);
                                       
                                     
                                       /*  ------  The actual testing  --- */
@@ -291,6 +290,7 @@ int main(int argc, char * argv [])
                                       
 
                                       if(!qf_test()) { avma = ltop; continue; }
+                                      myaffsi(A6, coefs[6]);  /* only for polynomials that pass the filter */
                                       /* take absolute value on the way */
                                       td = absi(discsr(a));
                                       /*if(!gcmp0(td) && Z_issquare(td)) { */
@@ -426,7 +426,7 @@ int main(int argc, char * argv [])
   fclose(afile);
   /*  system("cat .message | mail -s \"Septic searches\" jj@asu.edu");*/
   
-  printf("\nModular filter: %ld polynomials tested, %ld rejected.", qf_tested, qf_rejected);
+  printf("\nModular filter: %ld polynomials tested in %ld innermost loops, %ld rejected.", qf_tested, qf_loops, qf_rejected);
   printf("\nDone.");
   printf("\n");
   return 1;

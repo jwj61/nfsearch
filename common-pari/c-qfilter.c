@@ -43,8 +43,10 @@ static long qf_base[QF_NQ][DEG+1];  /* fixed coefficients reduced mod q */
 static unsigned long qf_gen = 0;    /* current innermost-loop generation */
 static unsigned long qf_stamp[QF_NQ][QF_MAXQ];
 static unsigned char qf_val[QF_NQ][QF_MAXQ];
+static unsigned short qf_invt[QF_NQ][QF_MAXQ];  /* inverses mod q */
+static unsigned char qf_issq[QF_NQ][QF_MAXQ];   /* 1 if a nonzero square mod q */
 
-long qf_tested = 0, qf_rejected = 0;   /* statistics */
+long qf_tested = 0, qf_rejected = 0, qf_loops = 0;   /* statistics */
 
 static long
 qf_pow(long b, long e, long m)
@@ -59,7 +61,8 @@ qf_pow(long b, long e, long m)
    the leading one down.  Uses res(A,B) = (-1)^(da db) lc(B)^(da-dr) res(B,R)
    with R = A mod B of degree dr. */
 static long
-qf_res(const long *f, int da, const long *g, int db, long q)
+qf_res(const long *f, int da, const long *g, int db, long q,
+       const unsigned short *invt)
 {
   long A[16], B[16], R[16], res = 1, inv, c;
   int i, j, dr;
@@ -70,7 +73,7 @@ qf_res(const long *f, int da, const long *g, int db, long q)
   for(;;) {
     if(db < 0) return 0;
     if(db == 0) return res * qf_pow(B[0], da, q) % q;
-    inv = qf_pow(B[0], q-2, q);
+    inv = invt[B[0]];
     for(i=0; i<=da-db; i++) {
       c = A[i] * inv % q;
       if(c)
@@ -115,6 +118,14 @@ qf_setup(long *casevec)
     if(i < totprimes) continue;   /* q is in S */
     qf_q[qf_n] = q;
     qf_cinv[qf_n] = qf_pow(c, q-2, q);
+    {
+      long a;
+      memset(qf_issq[qf_n], 0, sizeof(qf_issq[qf_n]));
+      for(a=1; a<q; a++) {
+        qf_invt[qf_n][a] = (unsigned short) qf_pow(a, q-2, q);
+        qf_issq[qf_n][a*a % q] = 1;
+      }
+    }
     qf_n++;
   }
 }
@@ -140,6 +151,7 @@ qf_newloop(void)
   for(k=0; k<qf_n; k++)
     for(i=0; i<=DEG; i++) qf_base[k][i] = qf_mod(co[i], qf_q[k]);
   qf_gen++;
+  qf_loops++;
 }
 
 /* Returns 0 if the current polynomial certainly fails, 1 otherwise. */
@@ -165,10 +177,9 @@ qf_test(void)
       for(i=0; i<=DEG; i++) f[i] = qf_base[k][i];
       f[QF_INNER] = r;
       for(i=0; i<DEG; i++) g[i] = f[i] * (DEG-i) % q;
-      v = qf_res(f, DEG, g, DEG-1, q);
+      v = qf_res(f, DEG, g, DEG-1, q, qf_invt[k]);
       /* q | disc: no information.  Otherwise disc/c must be a square. */
-      qf_val[k][r] = (v == 0) ||
-        (qf_pow(v * qf_cinv[k] % q, (q-1)/2, q) == 1);
+      qf_val[k][r] = (v == 0) || qf_issq[k][v * qf_cinv[k] % q];
       qf_stamp[k][r] = qf_gen;
     }
     if(!qf_val[k][r]) { qf_rejected++; return 0; }

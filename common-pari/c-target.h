@@ -253,7 +253,7 @@ int is_in_list(long, long []);
 void qf_setup(long *);
 void qf_newloop(void);
 int qf_test(void);
-extern long qf_tested, qf_rejected;
+extern long qf_tested, qf_rejected, qf_loops;
 
 /*
 int lookup_registry(char *);

@@ -152,7 +152,6 @@ int main(int argc, char * argv [])
                       for(count[DEG] =(long) low[DEG];
                           count[DEG]<= high[DEG]; count[DEG]++) {
                         An = arc[DEG]*count[DEG] + shift[DEG];
-                        myaffsi(An, coefs[DEG]);
 
                         /*		printf("\nA5 = "); plint(An); */
                         if(( An != 0) && (mylabs(An) <= boundn)) {
@@ -171,6 +170,7 @@ int main(int argc, char * argv [])
                                   
                                   
                                   if(!qf_test()) { avma = ltop; continue; }
+                                  myaffsi(An, coefs[DEG]);  /* only for polynomials that pass the filter */
                                   /* take absolute value on the way */
                                   td=absi(discsr(a));
                                   
@@ -272,7 +272,7 @@ int main(int argc, char * argv [])
           polcount, timetot, Dmaxroot, postdisc, t2count, discfcount);
   fflush(logfile);
   fclose(afile);
-  printf("\nModular filter: %ld polynomials tested, %ld rejected.", qf_tested, qf_rejected);
+  printf("\nModular filter: %ld polynomials tested in %ld innermost loops, %ld rejected.", qf_tested, qf_loops, qf_rejected);
   printf("\nDone.");
   printf("\n");
   return 0;

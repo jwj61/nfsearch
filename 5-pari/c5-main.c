@@ -238,7 +238,6 @@ printf("\n");
                                 for(count[4] = low[4]; count[4]<= high[4];
                                     count[4]++) {
                                   A4 = arc[4] * count[4] + shift[4];
-                                  myaffsi(A4, coefs[4]);
                                   
                                   /*  ------------  The actual testing   ---------- */
                                   
@@ -250,6 +249,7 @@ printf("\n");
                                   
                                   
                                   if(!qf_test()) { avma = ltop; continue; }
+                                  myaffsi(A4, coefs[4]);  /* only for polynomials that pass the filter */
                                   /* take absolute value on the way */
                                   td=absi(discsr(a));
                                   
@@ -363,7 +363,7 @@ printf("%l\n", gissquarerem(td, &sqrtdust)); */
           polcount, timetot, Dmaxroot, postdisc, t2count, discfcount);
   fflush(logfile);
   fclose(afile);
-  printf("\nModular filter: %ld polynomials tested, %ld rejected.", qf_tested, qf_rejected);
+  printf("\nModular filter: %ld polynomials tested in %ld innermost loops, %ld rejected.", qf_tested, qf_loops, qf_rejected);
   printf("\nDone.");
   printf("\n");
   return 0;
