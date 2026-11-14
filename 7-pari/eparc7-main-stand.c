@@ -30,9 +30,18 @@ int main(int argc, char * argv [])
   FILE      *logfile;
   logfile = fopen("eSeptic.log", "a");
 
+  char      *pargs[20];
+  int       pjobs;
+
   /* End of variable declarations */
 
   pari_init(2000000,500000);  /* take some memory for the stack */
+  argc = par_jobs_option(argc, argv, pargs, &pjobs);   /* -jN */
+  argv = pargs;
+  if(argc < 4) {
+    printf("usage: %s [-jN] B A1 A2\n", argv[0]);
+    exit(1);
+  }
 
   welcome();
   myinitprimes();
@@ -85,6 +94,7 @@ int main(int argc, char * argv [])
 					for(count[1] = 0;
                       2*count[1] <= DEG; count[1]++) {
 					*/
+  if(par_start(pjobs, afile)) {   /* serial run or parallel worker */
                     for(count[1] = par1;
                       count[1] <= par1; count[1]++) {
                     A1 = count[1];
@@ -138,6 +148,7 @@ int main(int argc, char * argv [])
                           count[DEG]<= high[DEG]; count[DEG]++) {
                         An = count[DEG];
                         myaffsi(An, coefs[DEG]);
+                        if(!par_claim()) continue;  /* another worker has this A_n */
 						printf(".");fflush(stdout);
 
                         /*		printf("\nA6 = "); plint(An); */
@@ -278,6 +289,8 @@ int main(int argc, char * argv [])
                       } /* Counter 6 */
                     } /* Counter 2 */
                     } /* Counter 1 */
+  par_finish(afile);               /* a worker exits here */
+  }
                   if(verbosity>2) {
                     if(polcount!= 0) {printf("\nSearched ");
                     plint(polcount);

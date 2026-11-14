@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "c-target.h"
 
 #define min(x,y) (((x)<(y)) ? (x) : (y))
@@ -178,7 +179,7 @@ void
 #else
 #if DEG==8
   printf(
-         "\na: 8  b: 71  c: 62  d: 611  e: 53  f: 521  g: 5111  h: 44  i: 431\n j: 422  k: 4211  l: 41111  m: 332  n: 3311  *: user\n");
+         "\na: 8  b: 71  c: 62  d: 611  e: 53  f: 521  g: 5111  h: 44  i: 431\n j: 422  k: 4211  l: 41111  m: 332  n: 3311  o: 3221  p: 32111\n q: 311111  r: 2222  s: 22211  t: 221111  u: 2111111  *: user\n");
 #endif
 #endif
 #endif
@@ -254,6 +255,13 @@ void
   case 11: strcpy(t, "4"); break;
   case 12: strcpy(t, "332"); break;
   case 13: strcpy(t, "33"); break;
+  case 14: strcpy(t, "322"); break;
+  case 15: strcpy(t, "32"); break;
+  case 16: strcpy(t, "3"); break;
+  case 17: strcpy(t, "2222"); break;
+  case 18: strcpy(t, "222"); break;
+  case 19: strcpy(t, "22"); break;
+  case 20: strcpy(t, "2"); break;
 #endif
 #endif
 #endif
@@ -266,6 +274,9 @@ void
 
 /* j contains the case and p is the prime */
 int iswild(long j, long p){
+#if DEG==8
+  return iswild8(j, p);
+#endif
   switch(j) {
 #if DEG==3
   case 0: if(p==3) return 1;
@@ -356,4 +367,41 @@ int iswild(long j, long p){
   default:
     return 0;
   }
+}
+
+#if DEG==8
+/* Degree 8: the ramification patterns of the menu, as lists of e's. */
+static const char *pattern8[] = {
+  "8", "71", "62", "611", "53", "521", "5111", "44", "431", "422", "4211",
+  "41111", "332", "3311", "3221", "32111", "311111", "2222", "22211",
+  "221111", "2111111" };
+#define NPAT8 ((long) (sizeof(pattern8)/sizeof(pattern8[0])))
+#endif
+
+/* The pattern string of menu item j (each e_i repeated f_i times), or NULL */
+const char *pattern_string(long j) {
+#if DEG==8
+  if(j >= 0 && j < NPAT8) return pattern8[j];
+#endif
+  return NULL;
+}
+
+/* Number of parts of pattern j (each e_i repeated f_i times); a tame
+   pattern has discriminant exponent DEG minus this.  -1 if unknown. */
+int pattern_parts(long j) {
+#if DEG==8
+  if(j >= 0 && j < NPAT8) return (int) strlen(pattern8[j]);
+#endif
+  return -1;
+}
+
+/* Wildness test for degree 8, where there are no hand-written functions:
+   wild if p divides one of the ramification indices. */
+int iswild8(long j, long p) {
+#if DEG==8
+  const char *q;
+  if(j < 0 || j >= NPAT8) return 1;
+  for(q = pattern8[j]; *q; q++) if((*q - '0') % p == 0) return 1;
+#endif
+  return 0;
 }

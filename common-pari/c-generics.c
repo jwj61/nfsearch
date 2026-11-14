@@ -7,6 +7,11 @@
 
 static long loadcasepntr=0;
 
+/* Where the splitting-type selections are read from (stdin by default;
+   c8 -a points it at a fixed string). */
+FILE *menuin = NULL;
+#define MENUIN (menuin ? menuin : stdin)
+
 /* Size of the buffer that go_fetch_input appends the case name to */
 #define INFILESTR_LEN 256
 
@@ -16,7 +21,7 @@ static long loadcasepntr=0;
 */
 
 long pdata[10][10][10];
-long pflags[10][8];
+long pflags[10][10];
 long (*(pf_next_list[10]))();
 int (*(pf_init_list[10]))();
 #if DEG==6
@@ -28,8 +33,16 @@ int (*(f_init_list[]))() = {t6init, t51init, t42init, t411init, t33init,
                             t21111init, w_file_init};
 #else
 #if DEG==8
-long (*(f_next_list[]))() = {w_file_next};
-int (*(f_init_list[]))() = {w_file_init};
+/* Degree 8: every tame pattern without an input file uses the generic
+   tame function tgen (congruences mod p for any p). */
+long (*(f_next_list[]))() = {tgen_next, tgen_next, tgen_next, tgen_next,
+  tgen_next, tgen_next, tgen_next, tgen_next, tgen_next, tgen_next,
+  tgen_next, tgen_next, tgen_next, tgen_next, tgen_next, tgen_next,
+  tgen_next, tgen_next, tgen_next, tgen_next, tgen_next, w_file_next};
+int (*(f_init_list[]))() = {tgen_init, tgen_init, tgen_init, tgen_init,
+  tgen_init, tgen_init, tgen_init, tgen_init, tgen_init, tgen_init,
+  tgen_init, tgen_init, tgen_init, tgen_init, tgen_init, tgen_init,
+  tgen_init, tgen_init, tgen_init, tgen_init, tgen_init, w_file_init};
 #else
 #if DEG==7
 long (*(f_next_list[]))() = {t7next, t61next, t52next, t511next, t43next,
@@ -73,7 +86,8 @@ long  p_inps[15][25];  /* Which cases to search, just used for output */
 long  plist[15], maxp[15], totprimes;
 long  ore[10][10];
 case_data cases[15][MAX_NUM_CASES];
-long  caselist[MAX_NUM_INDIV_CASES][15];
+long  (*caselist)[15] = NULL;   /* entries of the input files, grown as needed */
+static long caselist_cap = 0;
 long  casepntr;
 /* long  casepointer[7]; */
 
@@ -298,8 +312,8 @@ void getsearchcases()
     for(ii=0; ii<totprimes; ii++) {
       printf("              For p = %1ld\n", plist[ii]);
       spitsplittingmenu();
-      while(!(isalpha(j=getchar()) || j=='*')) ;
-      ungetc(j, stdin);
+      while(!(isalpha(j=getc(MENUIN)) || j=='*')) ;
+      ungetc(j, MENUIN);
       /* maxp is the number of cases for a given prime, and p_inps tells us
          what the cases mean. */
       maxp[ii]= -1;
@@ -309,7 +323,7 @@ void getsearchcases()
         snprintf(ptmp, sizeof(ptmp), "%1ld", plist[ii]);
         strncat(outfilename, ptmp, sizeof(outfilename)-strlen(outfilename)-1);
       }
-      while((j=getchar()) != '\n')
+      while((j=getc(MENUIN)) != '\n')
         if((j >= 'a' && j <='z') || j == '*') {
           go_fetch_input(ii, j - 'a', outs);
           /* This will have to be fixed to adjust for the name thing */
@@ -415,7 +429,7 @@ void
 go_fetch_input(long p_index, long wch, char * infilestr) {
   char buf[1024], sms[10];
   FILE *infile;
-  int nc, c, k, discexp, old_c, old_d, j, wildfile;
+  int nc, c, k, discexp, old_c, old_d, j, wildfile, usefunc;
   long disclist[30];
   
   wildfile = 0;
@@ -425,19 +439,19 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
     infilestr[0] = 'a'+wch;
     infilestr[1] = '\0';
     /* Look for discrim list next */
-    while((c=getchar()) == ' ')
+    while((c=getc(MENUIN)) == ' ')
       ; /* Eat spaces, c now contains first non-space */
     j=0;
-    ungetc(c, stdin); /* Undo extra reading */
+    ungetc(c, MENUIN); /* Undo extra reading */
     while(isdigit(c)){ /* Hey, it was a digit */
       if(j >= 29) {
         printf("\nToo many discriminant exponents listed.\n\n");
         exit(1);
       }
-      disclist[j++] = fmyreadintnice(stdin);
-      while(((c=getchar())==' ') || c == ',')
+      disclist[j++] = fmyreadintnice(MENUIN);
+      while(((c=getc(MENUIN))==' ') || c == ',')
         ; /* ate more spaces and commas*/
-      ungetc(c, stdin); /* Undo extra reading */
+      ungetc(c, MENUIN); /* Undo extra reading */
     }
     disclist[j] = 0;
     k=0;
@@ -458,13 +472,13 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
   } else {
     wildfile=1;
     printf("\nName your input file: ");
-    while(isspace(c=getchar())) ;
+    while(isspace(c=getc(MENUIN))) ;
     k=0;
     infilestr[k++] = c;
-    while(!isspace(c=getchar()) && c != EOF) {
+    while(!isspace(c=getc(MENUIN)) && c != EOF) {
       if(k < INFILESTR_LEN-1) infilestr[k++] = c;
     }
-    ungetc(c, stdin);
+    ungetc(c, MENUIN);
     infilestr[k] = '\0';
     /* infilestr gets appended to output file name (it is the letters part) */
     /*
@@ -478,13 +492,30 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
     snprintf(buf, sizeof(buf), "input%1d_%s.%1ld", DEG, infilestr, plist[p_index]);
   }
 
-  if((!iswild(wch, plist[p_index])) && wildfile==0)  { /* Tame, use function */
+  usefunc = (!iswild(wch, plist[p_index])) && wildfile==0;
+#if DEG>=8
+  /* In degree 8 a tame pattern uses its input file when there is one */
+  if(usefunc && (infile = fopen(buf, "r")) != NULL) {
+    fclose(infile);
+    usefunc = 0;
+  }
+  if(usefunc && pattern_parts(wch) < 0) {
+    printf("\nUnknown splitting type.\n\n");
+    exit(1);
+  }
+#endif
+  if(usefunc)  { /* Tame, use function */
     (maxp[p_index])++;
     printf("Tame function, choosing function %ld\n", wch);
     cases[p_index][maxp[p_index]].next_func = f_next_list[wch];
     cases[p_index][maxp[p_index]].init_func = f_init_list[wch];
-    cases[p_index][maxp[p_index]].init_func(p_index,0,0);
+    cases[p_index][maxp[p_index]].start = wch;   /* the pattern, for tgen */
+    cases[p_index][maxp[p_index]].init_func(p_index,0,maxp[p_index]);
     cases[p_index][maxp[p_index]].discexp = pdata[p_index][0][0];
+#if DEG>=8
+    printf("No input file: generic tame congruences mod %ld, d=%ld\n",
+           plist[p_index], cases[p_index][maxp[p_index]].discexp);
+#endif
   } else { /* Use file */
     infile = fopen(buf, "r");
     if(infile == NULL && wildfile) {
@@ -569,9 +600,16 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
       if(isdigit(nc)) { /* line starting with a digit, load it */
         if(!ALTERNATING || ((discexp % 2) ==0 )) {
           /* loadcasepntr++; */
-          if(loadcasepntr >= MAX_NUM_INDIV_CASES) {
-            printf("\nToo many cases! %ld\n\n",loadcasepntr);
-            exit(1);
+          if(loadcasepntr >= caselist_cap) {
+            long (*nl)[15];
+            caselist_cap = caselist_cap ? 2*caselist_cap : 65536;
+            nl = realloc(caselist, caselist_cap * sizeof(*caselist));
+            if(nl == NULL) {
+              printf("\nOut of memory loading the input files (%ld entries)\n\n",
+                     loadcasepntr);
+              exit(1);
+            }
+            caselist = nl;
           }
           ungetc(nc, infile);
           for(k=1; k<= DEG; k++)

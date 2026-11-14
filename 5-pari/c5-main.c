@@ -27,12 +27,17 @@ int main(int argc, char * argv [])
 
   /* End of variable declarations */
 
+  char *pargs[20];
+  int pall, pjobs, pnargs;
+
   pari_init(2000000,500000);  /* take some memory for the stack */
 
   welcome();
   myinitprimes();
-  getprimelist(argc, argv);
+  pnargs = par_options(argc, argv, pargs, &pall, &pjobs);   /* -a, -jN */
+  getprimelist(pnargs, pargs);
   initmygens();
+  if(pall) par_all_types();
   getsearchcases();
 
   verbosity = 3;
@@ -52,6 +57,7 @@ int main(int argc, char * argv [])
   gettimeofday(&time1, &tzn);
   /* Loop through cases */
 
+  if(par_start(pjobs, afile)) {   /* serial run or parallel worker */
   for(j_p[0]=0; j_p[0]<=maxp[0]; ++j_p[0]) {
     /*    printf("\n%1ld", j_p[0]+1); fflush(stdout); */
     for(j_p[1]=0; j_p[1]<=maxp[1]; ++j_p[1]) {
@@ -152,6 +158,7 @@ int main(int argc, char * argv [])
                           count[DEG]<= high[DEG]; count[DEG]++) {
                         An = arc[DEG]*count[DEG] + shift[DEG];
                         myaffsi(An, coefs[DEG]);
+                        if(!par_claim()) continue;  /* another worker has this A_n */
 
 /*
 if(A1 == 0 && A2 == 70 && An == 1364) {
@@ -354,6 +361,8 @@ printf("%l\n", gissquarerem(td, &sqrtdust)); */
         }
       }
     }
+  }
+  par_finish(afile);               /* a worker exits here */
   }
   gettimeofday(&time2, &tzn);
   timetot = time2.tv_sec - time1.tv_sec;
