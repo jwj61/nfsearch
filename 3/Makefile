@@ -26,3 +26,8 @@ c-target.h:
 
 c-doout.h:
 
+# Every object depends on the shared headers, so a change to c-target.h or c-doout.h
+# (symlinks into common-pari) rebuilds everything.  (This rule comes last: the first
+# rule of a Makefile is the default goal.)
+OBJS = $(patsubst %.c,%.o,$(wildcard *.c))
+$(OBJS): $(INCS)

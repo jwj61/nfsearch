@@ -231,7 +231,10 @@ printf("\n");
 				polcount++;
 				/* take absolute value on the way */
 				/* if(issquare(discsr(a))) {  */
-                
+
+				/* necessary condition for |d_K| <= B: D = d_K i^2 has a square divisor >= |D|/B */
+				td = discsr(a);
+				if(!signe(td) || !disc_may_be_small(td, bigbgen)) { avma = ltop; continue; }
 			  postdisc++;
 			  /* outbrute(td);printf(",\n"); 
 				 printf("%l\n", gissquarerem(td, &sqrtdust)); */

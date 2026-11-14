@@ -329,10 +329,13 @@ int main(int argc, char * argv [])
 				  
 				  polcount++;
                   
-				  /* take absolute value on the way */
+				  /* necessary condition for |d_K| <= B: D = d_K i^2 has a square divisor >= |D|/B */
+				  td = discsr(a);
+				  if(!signe(td) || !disc_may_be_small(td, bigbgen)) { avma = ltop; continue; }
+				  postdisc++;
 				  if(polisirreducible(a)) {
 					td=absi( discf(a));
-					if(1 || gcmp(td, bigbgen)<=0) {
+					if(gcmp(td, bigbgen)<=0) {
 					  discfcount++;
 					  pari_fprintf(afile, "%Ps\n", polredabs0(a,0));
 					  fflush(afile);

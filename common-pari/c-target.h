@@ -287,6 +287,7 @@ const char *pattern_string(long);
 int iswild8(long, long);
 
 /* Modular discriminant filter (c-qfilter.c) */
+int disc_may_be_small(GEN D, GEN B);   /* stand programs: can |d_K| <= B? */
 void qf_setup(long *);
 void qf_newloop(void);
 int qf_test(void);

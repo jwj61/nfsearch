@@ -174,7 +174,11 @@ int main(int argc, char * argv [])
 
 
                                   polcount++;
-                                  
+
+                                  /* necessary condition for |d_K| <= B: D = d_K i^2 has a square divisor >= |D|/B */
+                                  td = discsr(a);
+                                  if(!signe(td) || !disc_may_be_small(td, bigbgen)) { avma = ltop; continue; }
+                                  postdisc++;
 			if(polisirreducible(a)) {
 				td=absi( discf(a));
 				if(gcmp(td, bigbgen)<=0) {

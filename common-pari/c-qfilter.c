@@ -263,3 +263,33 @@ qf_test(void)
   if(qf_nreq && !qf_required()) { qf_rejected++; return 0; }
   return 1;
 }
+
+
+/* ---------- Discriminant filter for the standard searches (c?-stand) ----------
+
+   Can a polynomial of discriminant D define a field with |d_K| <= B?  D = d_K i^2, with i
+   the index of Z[alpha], so D needs a square divisor s^2 with s^2 B >= |D|.  The primes
+   below DLIM are found by trial division; a cofactor below DLIM^2 is a prime, and one below
+   DLIM^3 is a prime, a product of two primes or the square of a prime.  A larger cofactor is
+   not examined, and the answer is then 1, so a field with |d_K| <= B is never lost.  */
+
+#define DLIM 16384UL
+
+int disc_may_be_small(GEN D, GEN B)
+{
+  pari_sp av = avma;
+  GEN aD = absi_shallow(D), fa, P, E, sq = gen_1, L2, L3;
+  long i;
+  if (abscmpii(aD, B) <= 0) return 1;
+  L2 = sqru(DLIM); L3 = mului(DLIM, L2);
+  fa = absZ_factor_limit(aD, DLIM);
+  P = gel(fa, 1); E = gel(fa, 2);
+  for (i = 1; i < lg(P); i++) {
+    GEN p = gel(P, i);
+    long e = itos(gel(E, i));
+    if (cmpii(p, L3) >= 0) return gc_int(av, 1);
+    if (e > 1) sq = mulii(sq, powiu(p, e - (e & 1)));
+    if ((e & 1) && cmpii(p, L2) >= 0 && Z_issquare(p)) sq = mulii(sq, p);
+  }
+  return gc_int(av, cmpii(mulii(sq, B), aD) >= 0);
+}

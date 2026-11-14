@@ -253,7 +253,8 @@ int main(int argc, char * argv [])
 
                                       polcount++;
 									  td= discsr(a);
-									  if(!gcmp0(td) /*  &&  Z_issquare(td) */ ) {
+									  /* necessary condition for |d_K| <= B: D = d_K i^2 has a square divisor >= |D|/B */
+									  if(signe(td) && disc_may_be_small(td, bigbgen) /*  &&  Z_issquare(td) */ ) {
 									    postdisc++;
 									    if(polisirreducible(a)) {
 									      td=absi( discf(a)); 
