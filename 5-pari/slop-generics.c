@@ -19,7 +19,7 @@ GEN bdisc, slopgen;
 */
 
 long pdata[10][10][10];
-long pflags[10][8];
+long pflags[10][10];
 long (*(pf_next_list[10]))();
 int (*(pf_init_list[10]))();
 #if DEG==6
@@ -76,7 +76,8 @@ long  p_inps[15][25];  /* Which cases to search, just used for output */
 long  plist[15], maxp[15], totprimes;
 long  ore[10][10];
 case_data cases[15][MAX_NUM_CASES];
-long  caselist[MAX_NUM_INDIV_CASES][15];
+static long caselist_storage[MAX_NUM_INDIV_CASES][15];
+long  (*caselist)[15] = caselist_storage;
 long  casepntr;
 /* long  casepointer[7]; */
 

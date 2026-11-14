@@ -1,4 +1,27 @@
+/* The old PARI names (gcmp0, gcmp1, discsr, discf, ...) need PARI_OLD_NAMES, and PARI 2.17
+   removed the in-place functions gaffect, gaddz, gmulz and gshiftz from the library.  The
+   programs only use them on integers (t_INT), so they are defined here through affii.  The
+   #defines come after genpari.h, so this works with old and new versions of PARI. */
+#ifndef PARI_OLD_NAMES
+#define PARI_OLD_NAMES
+#endif
 #include "genpari.h"
+
+static inline void hunter_gaffect(GEN x, GEN z) { affii(x, z); }
+static inline void hunter_gaddz(GEN x, GEN y, GEN z)
+{ pari_sp av = avma; affii(addii(x, y), z); set_avma(av); }
+static inline void hunter_gmulz(GEN x, GEN y, GEN z)
+{ pari_sp av = avma; affii(mulii(x, y), z); set_avma(av); }
+static inline void hunter_gshiftz(GEN x, long n, GEN z)
+{ pari_sp av = avma; affii(shifti(x, n), z); set_avma(av); }
+#undef gaffect
+#undef gaddz
+#undef gmulz
+#undef gshiftz
+#define gaffect hunter_gaffect
+#define gaddz   hunter_gaddz
+#define gmulz   hunter_gmulz
+#define gshiftz hunter_gshiftz
 
 #define big 10000000
 #define giganto 9223372036854775807LL
@@ -93,7 +116,7 @@ typedef struct {
 
 extern case_data cases[15][MAX_NUM_CASES];
 
-extern long  caselist[MAX_NUM_INDIV_CASES][15];
+extern long  (*caselist)[15];   /* grows as input files are loaded */
 extern long  casepntr;
 /* extern long  casepointer[7]; */
 
@@ -110,7 +133,7 @@ extern int reg_cnt;
 */
 
 extern long pdata[10][10][10];
-extern long pflags[][8]; /* first by prime, then by i of a_i
+extern long pflags[][10]; /* first by prime, then by i of a_i
                             0 = call init and next
                             -1 = call init only
                             1 = don't call anyone */
@@ -238,6 +261,9 @@ int t22init(long, long, long);   long t22next(long, long);
 int t3init(long, long, long);    long t3next(long, long);
 int t21init(long, long, long);   long t21next(long, long);
 #endif
+#if DEG==8
+int tgen_init(long, long, long);  long tgen_next(long, long);
+#endif
 #endif
 #endif
 #endif
@@ -248,6 +274,17 @@ long next_all_primes(long , long);
 long init_all_primes(long , long);
 
 int is_in_list(long, long []);
+extern FILE *menuin;
+/* c-parallel.c: -a and -jN */
+int par_options(int, char **, char **, int *, int *);
+int par_jobs_option(int, char **, char **, int *);
+void par_all_types(void);
+int par_start(int, FILE *);
+int par_claim(void);
+void par_finish(FILE *);
+int pattern_parts(long);
+const char *pattern_string(long);
+int iswild8(long, long);
 
 /* Modular discriminant filter (c-qfilter.c) */
 void qf_setup(long *);

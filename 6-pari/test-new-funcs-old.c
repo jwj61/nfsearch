@@ -5,7 +5,7 @@
 
 long pdata[10][8][7];
 long plist[10];
-long pflags[10][8];
+long pflags[10][10];
 
 long long arc[10], shift[10];
 

@@ -48,6 +48,55 @@ static unsigned char qf_issq[QF_NQ][QF_MAXQ];   /* 1 if a nonzero square mod q *
 
 long qf_tested = 0, qf_rejected = 0, qf_loops = 0;   /* statistics */
 
+/* primes at which p | disc(f) is required (tame primes handled by the
+   filter instead of congruences, see tgen.c) */
+static long qf_req[15];
+static int qf_nreq = 0;
+#if DEG>=8
+extern int tgen_filter[];
+#endif
+
+typedef __int128 i128;
+static long mulmod(long a, long b, long m) { return (long) ((i128) a * b % m); }
+static long powmod(long b, long e, long m) {
+  long r = 1 % m;
+  b %= m; if(b < 0) b += m;
+  while(e) { if(e & 1) r = mulmod(r, b, m); b = mulmod(b, b, m); e >>= 1; }
+  return r;
+}
+
+/* resultant mod a prime q (any size below 2^62) */
+static long qf_res_big(const long *f, int da, const long *g, int db, long q)
+{
+  long A[16], B[16], R[16], res = 1, inv, c;
+  int i, j, dr;
+  for(i=0; i<=da; i++) A[i] = f[i];
+  for(i=0; i<=db; i++) B[i] = g[i];
+  while(db >= 0 && B[0] == 0) { for(i=0; i<db; i++) B[i] = B[i+1]; db--; }
+  for(;;) {
+    if(db < 0) return 0;
+    if(db == 0) return mulmod(res, powmod(B[0], da, q), q);
+    inv = powmod(B[0], q-2, q);
+    for(i=0; i<=da-db; i++) {
+      c = mulmod(A[i], inv, q);
+      if(c) for(j=0; j<=db; j++) {
+        A[i+j] = (A[i+j] - mulmod(c, B[j], q)) % q;
+        if(A[i+j] < 0) A[i+j] += q;
+      }
+    }
+    dr = db-1;
+    for(i=0; i<=dr; i++) R[i] = A[da-dr+i];
+    while(dr >= 0 && R[0] == 0) { for(i=0; i<dr; i++) R[i] = R[i+1]; dr--; }
+    if(dr < 0) return 0;
+    if((da*db) & 1) res = (q - res) % q;
+    res = mulmod(res, powmod(B[0], da-dr, q), q);
+    for(i=0; i<=db; i++) A[i] = B[i];
+    da = db;
+    for(i=0; i<=dr; i++) B[i] = R[i];
+    db = dr;
+  }
+}
+
 static long
 qf_pow(long b, long e, long m)
 {
@@ -102,6 +151,12 @@ qf_setup(long *casevec)
   int k, i;
   long q, c;
 
+  qf_nreq = 0;
+#if DEG>=8
+  for(i=0; i<totprimes; i++)
+    if(cases[i][casevec[i]].init_func == tgen_init && tgen_filter[i])
+      qf_req[qf_nreq++] = plist[i];
+#endif
   qf_n = 0;
 #ifdef NO_QFILTER
   qf_on = 0;
@@ -154,6 +209,23 @@ qf_newloop(void)
   qf_loops++;
 }
 
+/* p | disc(f) for the primes handled by tgen's filter mode */
+static int qf_required(void)
+{
+  long long co[9];
+  long f[DEG+1], g[DEG];
+  int r, i;
+  co[0] = 1; co[1] = A1; co[2] = A2; co[3] = A3; co[4] = A4;
+  co[5] = A5; co[6] = A6; co[7] = A7; co[8] = A8;
+  for(r=0; r<qf_nreq; r++) {
+    long qq = qf_req[r];
+    for(i=0; i<=DEG; i++) f[i] = qf_mod(co[i], qq);
+    for(i=0; i<DEG; i++) g[i] = mulmod(f[i], DEG-i, qq);
+    if(qf_res_big(f, DEG, g, DEG-1, qq) != 0) return 0;
+  }
+  return 1;
+}
+
 /* Returns 0 if the current polynomial certainly fails, 1 otherwise. */
 int
 qf_test(void)
@@ -162,13 +234,17 @@ qf_test(void)
   long f[DEG+1], g[DEG], q, r, v;
   int k, i;
 
-  if(!qf_on) return 1;
+  if(!qf_on) {
+    if(qf_nreq && !qf_required()) { qf_tested++; qf_rejected++; return 0; }
+    return 1;
+  }
   qf_tested++;
   switch(QF_INNER) {
   case 3: inner = A3; break;
   case 4: inner = A4; break;
   case 5: inner = A5; break;
-  default: inner = A6; break;
+  case 6: inner = A6; break;
+  default: inner = A7; break;
   }
   for(k=0; k<qf_n; k++) {
     q = qf_q[k];
@@ -184,5 +260,6 @@ qf_test(void)
     }
     if(!qf_val[k][r]) { qf_rejected++; return 0; }
   }
+  if(qf_nreq && !qf_required()) { qf_rejected++; return 0; }
   return 1;
 }

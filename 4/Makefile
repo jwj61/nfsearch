@@ -8,7 +8,7 @@ CFLAGS =  -g -Wall -I/usr/local/include/pari -L/usr/local/lib \
 #  -DULONG_NOT_DEFINED   
 #  -DLONG_IS_64BIT 
 
-FILES = c-generics.o c-qfilter.o c-degree_dep.o wild-file.o inc_primes.o \
+FILES = c-generics.o c-qfilter.o c-parallel.o c-degree_dep.o wild-file.o inc_primes.o \
         t4.o t31.o t22.o t211.o \
 #        c-registry.o
 

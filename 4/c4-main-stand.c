@@ -47,9 +47,18 @@ int main(int argc, char * argv [])
   double    newval, lval, rdin;
   GEN		bigbgen;
 
+  char      *pargs[20];
+  int       pjobs;
+
   /* End of variable declarations */
 
   pari_init(2000000,500000);  /* take some memory for the stack */
+  argc = par_jobs_option(argc, argv, pargs, &pjobs);   /* -jN */
+  argv = pargs;
+  if(argc < 2) {
+    printf("usage: %s [-jN] B\n", argv[0]);
+    exit(1);
+  }
 
   welcome();
   myinitprimes();
@@ -90,6 +99,7 @@ int main(int argc, char * argv [])
                   /* Do new initialization stuff */
 
                   /* ------------ Counter 1 ---------- */
+  if(par_start(pjobs, afile)) {   /* serial run or parallel worker */
                     for(count[1] = 0; 2*count[1] <= DEG; count[1]++) {
                     A1 = count[1];
                     myaffsi(A1, coefs[1]);
@@ -133,6 +143,7 @@ int main(int argc, char * argv [])
                           count[DEG]<= high[DEG]; count[DEG]++) {
                         An = count[DEG];
                         myaffsi(An, coefs[DEG]);
+                        if(!par_claim()) continue;  /* another worker has this A_n */
                         
                         /*		printf("\nA6 = "); plint(An); */
                         if(( An != 0) && (mylabs(An) <= boundn)) {
@@ -181,6 +192,8 @@ int main(int argc, char * argv [])
                         } /* Counter 4 */
                     } /* Counter 2 */
                     } /* Counter 1 */
+  par_finish(afile);               /* a worker exits here */
+  }
                   if(verbosity>2) {
                     if(polcount!= 0) {printf("\nSearched ");
                     plint(polcount);

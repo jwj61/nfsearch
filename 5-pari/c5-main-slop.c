@@ -9,8 +9,7 @@
 #include "c-target.h"
 #include "c-doout.h"
 
-extern GEN bdisc, slopgen;
-GEN		bdisc, slopgen;
+extern GEN bdisc, slopgen;   /* defined in slop-generics.c */
 
 
 int main(int argc, char * argv [])
