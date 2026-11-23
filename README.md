@@ -26,10 +26,10 @@ Note, if you want all primitive fields which are unramified outside a set, you m
 Options
 =======
 
-c4, c5, c6, c7 and c8 accept two options before the primes:
+c3, c4, c5, c6, c7 and c8 accept two options before the primes:
 
-  * -a searches all splitting types at every prime (abcd in degree 4, abcdef in degree 5, abcdefghij in degree 6, abcdefghijklmn in degree 7, a-u in degree 8), without prompting.  The primes must be on the command line.
-  * -jN (or -j N) runs N processes in parallel.  The processes share out the values of A_n within each case; the results go to the usual output and log files.
+  * -a searches all splitting types at every prime (ab in degree 3, abcd in degree 4, abcdef in degree 5, abcdefghij in degree 6, abcdefghijklmn in degree 7, a-u in degree 8), without prompting.  The primes must be on the command line.
+  * -jN (or -j N) runs N processes in parallel.  The processes share out the values of A_n within each case (in degree 3, groups of congruence classes for A_2 instead, since A_n is the innermost coefficient there); the results go to the usual output and log files.
 
 For example, "c6 -a -j16 2 3" searches every splitting type at 2 and 3 with 16 processes.
 

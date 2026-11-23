@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <math.h>
 #include "c-target.h"
 
 #define min(x,y) (((x)<(y)) ? (x) : (y))
@@ -10,6 +12,8 @@
 #define NEWT_MAXIT        1000
 #define POHST_REL_MARGIN  1e-9
 #define POHST_ABS_MARGIN  1e-6
+/* outward relative widening of a root computed by the bisection fallback */
+#define POHST_BISECT_WIDEN 1e-6
 
 #if DEG==6
 #define name "Sextic"
@@ -50,12 +54,95 @@ void welcome()
 #endif
 }
 
+/* The roots found here are the two ends lo < hi of the interval of x
+   allowed by the T2 bound, for the configuration with t roots of one
+   absolute value and DEG-t of absolute value x; they are the zeros of
+     g(x) = t K + (DEG-t) x^p - T x^(p-2),   p = 2 DEG/t, K = |An|^(2/t),
+   (newt() is g/g').  g(0+) = tK > 0, g decreases to its minimum at xm
+   and then increases, so lo < xm < hi.  Every bound below is a maximum
+   of thef(., t, x, .) over [lo, hi], and thef is convex in x (a positive
+   combination of powers of x with exponents <= 0 or >= 1), so the
+   maximum is at lo or hi, and replacing lo, hi by any lo' <= lo and
+   hi' >= hi can only enlarge the bounds.  So a root that is not
+   certainly accurate must err outwards: smaller for lo, larger for hi. */
+static double
+  pohst_g(double x, long t, double K)
+{
+  double p = (2.0*DEG)/t;
+  return K*t + (DEG-t)*fpow(x, p) - Dmaxroot1*fpow(x, p-2.0);
+}
+
+/* lo (side < 0) or hi (side > 0) by bisection, keeping an endpoint
+   with g > 0 (outside the interval) and returning that endpoint, then
+   moving it outward by the relative amount POHST_BISECT_WIDEN.  Near a
+   double root (|An| close to boundn) rounding errors in g of relative
+   size ~1e-16 move the computed root by ~1e-8 relative; the widening
+   covers that.  If g(xm) > 0 (the interval is empty to working
+   precision, which happens only at a double root) xm is used for both. */
+static double
+  pohst_bisect(long t, double K, double xm, int side)
+{
+  double out, in, mid;
+  int k;
+
+  if(!(pohst_g(xm, t, K) <= 0)) {
+    out = xm;
+  } else {
+    in = xm;
+    out = xm;
+    for(k = 0; k < 4000 && !(pohst_g(out, t, K) > 0); k++)
+      out = (side < 0) ? out/2.0 : out*2.0;
+    if(!(pohst_g(out, t, K) > 0)) {
+      fprintf(stderr, "pohst_thing: cannot bracket root (t=%ld, side=%d)\n", t, side);
+      exit(1);
+    }
+    for(k = 0; k < 200; k++) {
+      mid = (out + in)/2.0;
+      if(mid == out || mid == in) break;
+      if(pohst_g(mid, t, K) > 0) out = mid; else in = mid;
+    }
+  }
+  return (side < 0) ? out*(1.0 - POHST_BISECT_WIDEN) : out*(1.0 + POHST_BISECT_WIDEN);
+}
+
+/* Newton's method for lo (side < 0, started below xm) or hi (side > 0).
+   The result is accepted only if Newton converged within NEWT_MAXIT
+   steps to a finite positive value on the correct side of xm;
+   otherwise (including NaN, which used to end the loop silently since
+   comparisons with NaN are false) the root is recomputed by bisection. */
+static double
+  pohst_root(double x, long t, double K, double xm, int side)
+{
+  double dff;
+  int iters = 0, ok = 0;
+
+  /* Solve to near machine precision: the bounds below are very
+     sensitive to these roots. */
+  while(iters < NEWT_MAXIT) {
+    dff = newt(x, t, K);
+    if(!isfinite(dff)) break;
+    if(fabs(dff) <= NEWT_TOL*x && !(side < 0 && x < dff)) { ok = 1; break; }
+    if(side < 0 && x < dff) x = x/2.0;      /* keep x > 0 */
+    else x = x - dff;
+    if(!isfinite(x) || x <= 0) break;
+    iters++;
+  }
+  if(ok && isfinite(x) && x > 0 && ((side < 0) ? x <= xm : x >= xm))
+    return x;
+  if(iters >= NEWT_MAXIT)
+    fprintf(stderr, "pohst_thing: Newton did not converge (%s root, t=%ld); using bisection\n",
+            (side < 0) ? "first" : "second", t);
+  else
+    fprintf(stderr, "pohst_thing: Newton failed (%s root, t=%ld, x=%g); using bisection\n",
+            (side < 0) ? "first" : "second", t, x);
+  return pohst_bisect(t, K, xm, side);
+}
+
 long
   pohst_thing()
 {
   register int i, j;
-  int       iters;
-  double    kpows[8], degroots[DEG+2], dff, newval;
+  double    kpows[8], degroots[DEG+2], newval, p, xm;
   long      sgn_n, degover2;
   long long absAn;
 
@@ -66,35 +153,14 @@ long
     pbounds[i] = -9999;
   for(i=1;i<=degover2; i++) kpows[i] = fpow(absAn, 2.0/i);
 
-  for(i=1;i<=degover2; i++)  {    /* Use Newton's method to find some roots */
-    degroots[i-1] =  0.9*fpow(Dmaxroot1/DEG, 0.5);
-
-    /* Solve to near machine precision: the bounds below are very
-       sensitive to these roots, and a loose tolerance makes them too
-       small, which can lose polynomials. */
-    iters = 0;
-    while(((fabs(dff = newt(degroots[i-1], i, kpows[i])) > NEWT_TOL*degroots[i-1]) ||
-           (degroots[i-1] < dff)) && iters < NEWT_MAXIT) {
-      if(degroots[i-1] < dff) degroots[i-1] = degroots[i-1]/2.0;
-      else degroots[i-1] = degroots[i-1] - dff;
-      iters++;
-    }
-    if(iters >= NEWT_MAXIT)
-      fprintf(stderr, "pohst_thing: Newton did not converge (first root, i=%d)\n", i);
+  for(i=1;i<=degover2; i++)  {    /* the two roots lo, hi for t = i */
+    p = (2.0*DEG)/i;
+    xm = sqrt(Dmaxroot1*(p-2.0)/((DEG-i)*p));   /* minimum of g */
+    degroots[i-1] = pohst_root(0.9*fpow(Dmaxroot1/DEG, 0.5), i, kpows[i], xm, -1);
+    degroots[i+degover2-1] = pohst_root(2.0*fpow(Dmaxroot1/DEG, 0.5) - degroots[i-1],
+                                        i, kpows[i], xm, 1);
   }
 
-  for(i=1;i<=degover2; i++)  {    /* Use Newton's method to find more roots */
-    degroots[i+degover2-1] = 2.0* fpow(Dmaxroot1/DEG, 0.5) - degroots[i-1];
-    iters = 0;
-    while((fabs(dff = newt(degroots[i+degover2-1], i, kpows[i]))
-           > NEWT_TOL*degroots[i+degover2-1]) && iters < NEWT_MAXIT) {
-      degroots[i+degover2-1] = degroots[i+degover2-1] - dff;
-      iters++;
-    }
-    if(iters >= NEWT_MAXIT)
-      fprintf(stderr, "pohst_thing: Newton did not converge (second root, i=%d)\n", i);
-  } /* Roots now found by Newton's method */
-  
   for(i=1; i<3; i++) {
     for(j=0; j<2*degover2; j++) {
       newval = thef(-1*i, ((j%degover2)+1),degroots[j],absAn);
@@ -111,6 +177,16 @@ long
       }
     }
   }
+
+  /* A NaN newval never passes the > tests above, so a bad root would
+     leave a bound too small (or at -9999); refuse to continue. */
+  for(i=1; i<DEG; i++)
+    for(j=0; j<2*degover2; j++)
+      if(!isfinite(thef((i < 3) ? -1*i : i, ((j%degover2)+1), degroots[j], absAn))) {
+        fprintf(stderr, "pohst_thing: non-finite bound (i=%d, root %d = %g, An = %lld)\n",
+                i, j, degroots[j], (long long) An);
+        exit(1);
+      }
 
   /* Every pbounds[i] is used as an upper bound, so enlarging it is
      safe.  This absorbs the remaining rounding error in the roots. */

@@ -9,6 +9,10 @@
 #include "c-target.h"
 #include "c-doout.h"
 
+/* aim for at least this many groups of A2 congruence classes (for each A1)
+   to share out among parallel workers */
+#define PAR_GROUPS3 1024
+
 
 int main(int argc, char * argv [])
 {
@@ -22,17 +26,22 @@ int main(int argc, char * argv [])
 
   char      s[512];
   long long high[9], low[9];
-  long      ltop, vp;
+  long      ltop, vp, hgrp;
   double    boundn;
 
   /* End of variable declarations */
+
+  char *pargs[20];
+  int pall, pjobs, pnargs;
 
   pari_init(2000000,500000);  /* take some memory for the stack */
 
   welcome();
   myinitprimes();
-  getprimelist(argc, argv);
+  pnargs = par_options(argc, argv, pargs, &pall, &pjobs);   /* -a, -jN */
+  getprimelist(pnargs, pargs);
   initmygens();
+  if(pall) par_all_types();
   getsearchcases();
 
   makeoutfilename(s, j_p);
@@ -51,6 +60,7 @@ int main(int argc, char * argv [])
   gettimeofday(&time1, &tzn);
   /* Loop through cases */
 
+  if(par_start(pjobs, afile)) {   /* serial run or parallel worker */
   for(j_p[0]=0; j_p[0]<=maxp[0]; ++j_p[0]) {
     /*    printf("\n%1ld", j_p[0]+1); fflush(stdout); */
     for(j_p[1]=0; j_p[1]<=maxp[1]; ++j_p[1]) {
@@ -104,9 +114,23 @@ int main(int argc, char * argv [])
                     centers[2] = A1*A1*(DEG-1)/(2.0*DEG);
 
                     if(init_all_primes(2,A1)) {
-                    
-                    do {
-                    /* This is generic */
+
+                    /* Parallel runs share out the congruence classes for A2.
+                       In degree 3 with tame primes there are about prod(p) of
+                       them for each A1, and most contain no A2 in range, so
+                       nearly all of the time goes into stepping through them
+                       and combining the congruences by CRT.  The classes are
+                       taken in groups (the classes at the primes j >= hgrp
+                       fixed, see next_all_primes_range); a worker claims whole
+                       groups, steps through and CRTs only the classes of its
+                       own groups, and jumps over the others in one step.  The
+                       order of the classes is the same as with
+                       next_all_primes. */
+                    hgrp = group_prime(2, PAR_GROUPS3);
+                    do {                  /* groups */
+                    if(par_claim()) {
+                    do {                  /* classes in the group */
+                    docrt(2);     /* arc[2], shift[2] for this class */
 
                     high[2] = (long long) S2c_upper(Dmaxroot, 2);
                     low[2] = (long long) S2c_lower(- Dmaxroot, 2);
@@ -185,8 +209,9 @@ int main(int argc, char * argv [])
                                     }
                                     if(gcmp1(td)) {
                                       if(polisirreducible(a)) {
-                                        DUMPIT
-                                          }
+                                        pari_fprintf(afile, "%Ps\n", polredabs0(a,0));
+                                        fflush(afile);
+                                      }
                                     } else {
                                       if(Z_issquare(td)) {
                                         postdisc++;
@@ -204,8 +229,9 @@ int main(int argc, char * argv [])
                                               gaffect(tdtmp, td);
                                             }
                                             if(gcmp1(td)) {
-                                              DUMPIT
-                                                } /* Discf check */
+                                              pari_fprintf(afile, "%Ps\n", polredabs0(a,0));
+                                              fflush(afile);
+                                            } /* Discf check */
                                           } /* Irreducible */
 #ifdef TTWO
                                         } /* T2 check */
@@ -222,7 +248,9 @@ int main(int argc, char * argv [])
                       } while(next_all_primes(3,A2));
                       }
                     } /* Counter 2 */
-                    } while(next_all_primes(2,A1));
+                    } while(next_all_primes_range(2, A1, 0, hgrp));          /* next class in the group */
+                    } /* claimed group */
+                    } while(next_all_primes_range(2, A1, hgrp, totprimes));  /* next group */
                     }
                   } /* Counter 1 */
                   }  while (next_all_primes(1,0));
@@ -263,6 +291,8 @@ int main(int argc, char * argv [])
         }
       }
     }
+  }
+  par_finish(afile);               /* a worker exits here */
   }
   gettimeofday(&time2, &tzn);
   timetot = time2.tv_sec - time1.tv_sec;

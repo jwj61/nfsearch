@@ -271,7 +271,10 @@ int tgen_init(long, long, long);  long tgen_next(long, long);
 int w_file_init(long, long, long);  long w_file_next(long, long);
 
 long next_all_primes(long , long);
+long next_all_primes_range(long, long, long, long);
+long group_prime(long, long);
 long init_all_primes(long , long);
+void docrt(int);
 
 int is_in_list(long, long []);
 extern FILE *menuin;
