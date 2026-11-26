@@ -14,13 +14,16 @@ FILES = c-generics.o c-qfilter.o c-parallel.o c-degree_dep.o wild-file.o inc_pri
 
 INCS = c-target.h c-doout.h
 
-all:    c4 c4-stand
+all:    c4 c4-stand c4-tr
 
 c4:	$(FILES) c4-main.o
 	$(CC) $(CFLAGS) -o c4 $(FILES) c4-main.o -lpari -lm
 
 c4-stand:	$(FILES) c4-main-stand.o
 	$(CC) $(CFLAGS) -o c4-stand $(FILES) c4-main-stand.o -lpari -lm
+
+c4-tr:	$(FILES) c4-main-tr.o
+	$(CC) $(CFLAGS) -o c4-tr $(FILES) c4-main-tr.o -lpari -lm
 
 test-new-funcs:	test-new-funcs.o
 	$(CC) $(CFLAGS) -o test-new-funcs t4.o t31.o t22.o t211.o \

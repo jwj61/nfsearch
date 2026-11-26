@@ -20,13 +20,19 @@ FILES3 = slop-generics.o c-qfilter.o c-degree_dep.o c5-main-slop.o wild-file.o i
 
 INCS = c-target.h c-doout.h
 
-all:    c5 c5-stand c5slop
+all:    c5 c5-stand c5slop c5-tr
 
 c5:	$(FILES)
 	$(CC) $(CFLAGS) -o c5 $(FILES) -lpari -lm
 
 c5-stand:	$(FILES2)
 	$(CC) $(CFLAGS) -o c5-stand $(FILES2) -lpari -lm
+
+FILES4 = c-generics.o c-qfilter.o c-parallel.o c-degree_dep.o c5-main-tr.o wild-file.o inc_primes.o \
+        t5.o t41.o t32.o t311.o t221.o t2111.o
+
+c5-tr:	$(FILES4)
+	$(CC) $(CFLAGS) -o c5-tr $(FILES4) -lpari -lm
 
 c5slop:	$(FILES3)
 	$(CC) $(CFLAGS) -o c5slop $(FILES3) -lpari -lm

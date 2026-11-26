@@ -216,7 +216,7 @@ void getprimelist(int argc, char * argv[] )
   int jj, ii;
 
   DO_ALL_CASES = (argv[0][strlen(argv[0])-1] == 'a');
-  ALTERNATING = (argv[0][0] == 'a');
+  if(argv[0][0] == 'a') ALTERNATING = 1;   /* also set by the option -s */
   if(argc > 1) {
     jj=1;
     for(ii=1; ii<argc; ii++, jj++) {
@@ -271,6 +271,18 @@ void getprimelist(int argc, char * argv[] )
   }
 }
 
+/* Append s to outfilename.  Stop rather than truncate: a truncated name could make two
+   different searches write to the same output file. */
+static void append_outfilename(const char *s)
+{
+  size_t n = strlen(outfilename), m = strlen(s);
+  if(n + m >= sizeof(outfilename)) {
+    fprintf(stderr, "output file name too long: %s%s\n", outfilename, s);
+    exit(1);
+  }
+  memcpy(outfilename + n, s, m + 1);
+}
+
 void getsearchcases()
 {
   long j;
@@ -317,17 +329,17 @@ void getsearchcases()
       /* maxp is the number of cases for a given prime, and p_inps tells us
          what the cases mean. */
       maxp[ii]= -1;
-      if(ii>0) strncat(outfilename, ".", sizeof(outfilename)-strlen(outfilename)-1);
+      if(ii>0) append_outfilename(".");
       {
         char ptmp[32];
         snprintf(ptmp, sizeof(ptmp), "%1ld", plist[ii]);
-        strncat(outfilename, ptmp, sizeof(outfilename)-strlen(outfilename)-1);
+        append_outfilename(ptmp);
       }
       while((j=getc(MENUIN)) != '\n')
         if((j >= 'a' && j <='z') || j == '*') {
           go_fetch_input(ii, j - 'a', outs);
           /* This will have to be fixed to adjust for the name thing */
-          strncat(outfilename, outs, sizeof(outfilename)-strlen(outfilename)-1);
+          append_outfilename(outs);
 /*           casepointer[ii+1] = casepointer[ii]+maxp[ii]+1; */
         }
     }
@@ -335,6 +347,10 @@ void getsearchcases()
   /* We are preparing for several types of splittings.  Now, each
      splitting is potentially subdivided, and we would have to ask
      about those too. */
+  for(ii=0; ii<totprimes; ii++)
+    if(maxp[ii] < 0)
+      printf("No cases to search at p = %ld%s.\n", plist[ii],
+             ALTERNATING ? " with an even discriminant exponent" : "");
   for(ii=totprimes; ii<10; ii++)
     maxp[ii] = 0;
   printf("I have to search %1ld ", maxp[0]+1);
@@ -512,6 +528,14 @@ go_fetch_input(long p_index, long wch, char * infilestr) {
     cases[p_index][maxp[p_index]].start = wch;   /* the pattern, for tgen */
     cases[p_index][maxp[p_index]].init_func(p_index,0,maxp[p_index]);
     cases[p_index][maxp[p_index]].discexp = pdata[p_index][0][0];
+    if(ALTERNATING && (cases[p_index][maxp[p_index]].discexp % 2) != 0) {
+      /* square discriminants only: this splitting type has an odd
+         discriminant exponent, so drop it */
+      printf("Skipping it: discriminant exponent %ld is odd\n",
+             cases[p_index][maxp[p_index]].discexp);
+      (maxp[p_index])--;
+      return;
+    }
 #if DEG>=8
     printf("No input file: generic tame congruences mod %ld, d=%ld\n",
            plist[p_index], cases[p_index][maxp[p_index]].discexp);

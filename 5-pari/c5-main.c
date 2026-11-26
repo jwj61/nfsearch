@@ -258,7 +258,9 @@ printf("\n");
                                   if(!qf_test()) { avma = ltop; continue; }
                                   myaffsi(A4, coefs[4]);  /* only for polynomials that pass the filter */
                                   /* take absolute value on the way */
-                                  td=absi(discsr(a));
+                                  td = discsr(a);
+                                  if(ALTERNATING && (signe(td) <= 0 || !Z_issquare(td))) { avma = ltop; continue; }  /* -s: disc(f) = d_K index^2 must be a positive square */
+                                  td = absi(td);
                                   
                                   if(!gcmp0(td)) {
                                     tdtmp = gcopy(td);

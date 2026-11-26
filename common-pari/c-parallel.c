@@ -3,6 +3,10 @@
 
     -a    search all splitting types (a, b, ...) at every prime, no prompts
     -jN   (or -j N) use N processes
+    -s    (degrees 5, 6, 7) only fields whose discriminant is a square:
+          only the cases (congruences) with an even discriminant exponent
+          at every prime are searched, and a polynomial is kept only if
+          its discriminant is a positive square
 
   The standard searches (c?-stand) take only -jN (par_jobs_option).
 
@@ -48,9 +52,16 @@ static char par_menu[20*32];
 
 static void par_usage(const char *prog)
 {
-  printf("usage: %s [-a] [-jN] p1 p2 ...\n"
-         "  -a   search all splitting types (%s) at every prime, no prompts\n"
-         "  -jN  use N processes\n", prog, ALL_TYPES);
+#if DEG>=5 && DEG<=7
+  printf("usage: %s [-a] [-s] [-jN] p1 p2 ...\n", prog);
+#else
+  printf("usage: %s [-a] [-jN] p1 p2 ...\n", prog);
+#endif
+  printf("  -a   search all splitting types (%s) at every prime, no prompts\n", ALL_TYPES);
+#if DEG>=5 && DEG<=7
+  printf("  -s   only fields with square discriminant (even exponents only)\n");
+#endif
+  printf("  -jN  use N processes\n");
   exit(1);
 }
 
@@ -64,6 +75,9 @@ int par_options(int argc, char **argv, char **args, int *all, int *njobs)
   args[nargs++] = argv[0];
   for(k=1; k<argc; k++) {
     if(strcmp(argv[k], "-a") == 0) *all = 1;
+#if DEG>=5 && DEG<=7
+    else if(strcmp(argv[k], "-s") == 0) ALTERNATING = 1;   /* square discriminants */
+#endif
     else if(strncmp(argv[k], "-j", 2) == 0) {
       const char *v = argv[k][2] ? argv[k]+2 : (k+1 < argc ? argv[++k] : NULL);
       if(v == NULL || (*njobs = atoi(v)) < 1) par_usage(argv[0]);

@@ -26,14 +26,17 @@ Note, if you want all primitive fields which are unramified outside a set, you m
 Options
 =======
 
-c3, c4, c5, c6, c7 and c8 accept two options before the primes:
+c3, c4, c5, c6, c7 and c8 accept these options before the primes:
 
   * -a searches all splitting types at every prime (ab in degree 3, abcd in degree 4, abcdef in degree 5, abcdefghij in degree 6, abcdefghijklmn in degree 7, a-u in degree 8), without prompting.  The primes must be on the command line.
   * -jN (or -j N) runs N processes in parallel.  The processes share out the values of A_n within each case (in degree 3, groups of congruence classes for A_2 instead, since A_n is the innermost coefficient there); the results go to the usual output and log files.
+  * -s (c5, c6 and c7 only) finds only fields whose discriminant is a square.  Only the cases with an even discriminant exponent are used: in the input files at wild primes, only the congruences listed under an even d are loaded, and a tame splitting type whose exponent (the sum of (e-1)f) is odd is dropped.  A polynomial is kept only if its discriminant is a positive square (disc(f) = d_K times a square, so this holds exactly when d_K is a square).  Output goes to eSearch_... and the log to eQuintic.log, eSextic.log or eSeptic.log.  (The same mode is turned on by running the program under a name starting with "a", for example through a link ac5 -> c5.)
 
 For example, "c6 -a -j16 2 3" searches every splitting type at 2 and 3 with 16 processes.
 
 The standard searches by discriminant bound (c4-stand, c5-stand, c6-stand, c7-stand and eparc7-stand) take the option -jN in the same way, before or after their other arguments; for example "c6-stand -j16 1000000".  Negative numbers remain ordinary arguments.  c6-stand ignores -j in its counting mode (A1 < 0).
+
+c4-tr (in 4) and c5-tr (in 5-pari) search for totally real quartic and quintic fields with discriminant at most B by Voight's method: the coefficients are chosen from the top down, and each one is bounded using Rolle's theorem (the roots of each derivative of f interlace those of the next) and the Laguerre-Samuelson interval for the roots.  Usage: "c4-tr [-jN] [-s] B" (c5-tr likewise).  With -s each keeps only fields whose discriminant is a perfect square.  Before the exact discriminant is computed, it is tested for being a square modulo 64, 63, 65 and the primes 11 to 47, from a precomputed form of the discriminant of the generic polynomial; this rejects nearly all polynomials.  Output goes to TRSearch_B, or to TRSquare_B with -s.  Both use Hunter's bound with the same slack as c4-stand and c5-stand.  So c4-tr, like c4-stand, finds every primitive field (A4, S4) but can miss imprimitive ones (C4, V4, D4), whose small elements may all lie in the quadratic subfield.  Quintic fields are all primitive, so c5-tr is complete.  The source, common-pari/c-main-tr.c, does not depend on the degree; 4/c4-main-tr.c and 5-pari/c5-main-tr.c are links to it.
 
 What is the output?
 ===================

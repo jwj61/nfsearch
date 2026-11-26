@@ -129,13 +129,7 @@ static double
   }
   if(ok && isfinite(x) && x > 0 && ((side < 0) ? x <= xm : x >= xm))
     return x;
-  if(iters >= NEWT_MAXIT)
-    fprintf(stderr, "pohst_thing: Newton did not converge (%s root, t=%ld); using bisection\n",
-            (side < 0) ? "first" : "second", t);
-  else
-    fprintf(stderr, "pohst_thing: Newton failed (%s root, t=%ld, x=%g); using bisection\n",
-            (side < 0) ? "first" : "second", t, x);
-  return pohst_bisect(t, K, xm, side);
+  return pohst_bisect(t, K, xm, side);   /* Newton failed or did not converge */
 }
 
 long
