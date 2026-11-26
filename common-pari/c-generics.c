@@ -215,8 +215,13 @@ void getprimelist(int argc, char * argv[] )
 {
   int jj, ii;
 
-  DO_ALL_CASES = (argv[0][strlen(argv[0])-1] == 'a');
-  if(argv[0][0] == 'a') ALTERNATING = 1;   /* also set by the option -s */
+  /* The program name, without its directory, selects modes: ending in 'a' searches all
+     cases, starting with 'a' keeps only square discriminants (also set by the option -s). */
+  const char *pname = strrchr(argv[0], '/') ? strrchr(argv[0], '/') + 1 : argv[0];
+  if(*pname) {
+    DO_ALL_CASES = (pname[strlen(pname)-1] == 'a');
+    if(pname[0] == 'a') ALTERNATING = 1;
+  } else DO_ALL_CASES = 0;
   if(argc > 1) {
     jj=1;
     for(ii=1; ii<argc; ii++, jj++) {
