@@ -329,7 +329,12 @@ void getsearchcases()
     for(ii=0; ii<totprimes; ii++) {
       printf("              For p = %1ld\n", plist[ii]);
       spitsplittingmenu();
-      while(!(isalpha(j=getc(MENUIN)) || j=='*')) ;
+      while(!(isalpha(j=getc(MENUIN)) || j=='*'))
+        if(j == EOF) {
+          printf("\nEnd of input: no splitting types given for p = %ld (use -a for all).\n",
+                 plist[ii]);
+          exit(1);
+        }
       ungetc(j, MENUIN);
       /* maxp is the number of cases for a given prime, and p_inps tells us
          what the cases mean. */
@@ -340,7 +345,7 @@ void getsearchcases()
         snprintf(ptmp, sizeof(ptmp), "%1ld", plist[ii]);
         append_outfilename(ptmp);
       }
-      while((j=getc(MENUIN)) != '\n')
+      while((j=getc(MENUIN)) != '\n' && j != EOF)
         if((j >= 'a' && j <='z') || j == '*') {
           go_fetch_input(ii, j - 'a', outs);
           /* This will have to be fixed to adjust for the name thing */
