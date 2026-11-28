@@ -1,14 +1,26 @@
 read("count4.gp");
-\\ solvable.gp -- all number fields of prime degree p with solvable Galois group
+\\ solvable4.gp -- all number fields of prime degree p with solvable Galois group
 \\ that are unramified outside a finite set S of primes, by Kummer descent.
 \\
-\\ Usage:   read("solvable_prime_fields/claude/solvable.gp");
-\\          R = solvfields(7, [2,3,7]);   \\ R = [[pol, d], ...], sorted by |disc|
+\\ Usage:   read("solvable4.gp");
+\\          R = solvfields(7, [2,3,7]);   \\ R = [pol, ...], sorted by |disc|
 \\ pol is a polredabs defining polynomial; Gal(pol) = C_p : C_d (order p*d, d | p-1).
-\\ solvfields(p, S, 1) also verifies every polynomial (nfdisc supported on S,
-\\ polgalois order p*d, pairwise distinct polredabs).  solvfields(p, S, 2): certify
-\\ Sel(M) for the auxiliary fields M (bnfcertify(,1) + p-saturation of the T'-units); otherwise GRH is assumed
-\\ there.  Flags add.  Timings of the stages are printed and kept in the global SVTIME.
+\\ (p = 2 returns [[pol, 1], ...] instead.)
+\\ solvfields(p, S, flag, d) with d > 0 returns only the fields whose Galois group is
+\\ C_p : C_d, of order p*d ([] unless d | p-1); the characters psi of other orders are
+\\ skipped before any field M is built, and only N_d is checked against solvcount.
+\\ d = 0 (the default) returns all of them.
+\\ Every polynomial is verified (sv_verify): degree p, irreducible, nfdisc supported on S,
+\\ polredabs, pairwise distinct.  The polgalois check in sv_verify is disabled; d comes
+\\ from the construction.
+\\ solvfields(p, S, 2): certify Sel(M) for the auxiliary fields M (bnfcertify(,1) +
+\\ p-saturation of the T'-units); otherwise GRH is assumed there.  Timings of the stages
+\\ are printed and kept in the global SVTIME.
+\\ Completeness: every call (p odd) compares the number found for each d with
+\\ solvcount(p, S) from count4.gp and raises an error on a mismatch.  With flag = 0 that
+\\ count is certified GRH-free (solvcount(p, S, 1)), so the list is complete
+\\ unconditionally although the Kummer side assumes GRH.  With any other flag the count is
+\\ not certified; with flag 2 the Kummer side is, so the list is still complete.
 \\
 \\ Theory (p odd).  A degree-p field F has solvable Galois group iff that group is
 \\ C_p : C_d <= AGL(1,p), d | p-1.  Let L be the Galois closure, K = L^{C_p} (cyclic of
@@ -229,12 +241,17 @@ sv_quadratic(S) =
 }
 
 \\ ---------- main ----------
-solvfields(p, S, flag = 0) =
+solvfields(p, S, flag = 0, d = 0) =
 {
   SVNFROOTS = 0; SVFALLBACK = 0;
   my(cnts,cntsfound,cnts2);
   my(t0 = getabstime(), tm = vector(6), Sp, f, G, cyc, g0, om, psis, groups, res = List(), nM = 0, stats = List());
   S = Set(S);
+  foreach(S, q, if(type(q) != "t_INT" || !isprime(q), error("solvfields: S must contain primes only, got ", q)));
+  if(!isprime(p), error("solvfields: p must be prime, got ", p));
+  if(type(d) != "t_INT" || d < 0, error("solvfields: d must be a nonnegative integer, got ", d));
+  \\ d > 0: only the fields with Galois group C_p : C_d (order p*d); none unless d | p-1
+  if(d && (p - 1) % d, return([]));
   if(p == 2, res = vecsort(sv_quadratic(S), r -> [abs(nfdisc(r[1])), Vec(r[1])]); SVTIME = [getabstime() - t0];
     if(bitand(flag, 1), sv_verify(res, p, S)); return(res));
   Sp = setunion(S, [p]);
@@ -251,6 +268,8 @@ solvfields(p, S, flag = 0) =
   psis = List();
   forvec(a = vector(#cyc, i, [0, (p - 1) / steps[i] - 1]), my(e = vector(#cyc, i, a[i] * steps[i]));
     if(xp && (e * znlog(xp, G)) % (p - 1) != 1, next);    \\ psi(xp) = g0: psi = omega on (Z/p)^*
+    \\ chi = omega/psi has order d(psi); skip psi early (before any bnfinit) if d(psi) != d
+    if(d && (p - 1) / gcd(concat((om - e) % (p - 1), [p - 1])) != d, next);
     listput(psis, e));
   \\ group psi by kernel
   groups = Map();
@@ -352,13 +371,13 @@ solvfields(p, S, flag = 0) =
       rows = matconcat([rows; Mod(1, p) * Mat(vrow); Mod(1, p) * matrix(#ucond, r, i, j, lg[j][ucond[i]])]));
     tm[2] += getabstime() - tt;
     \\ each psi in this kernel class
-    for(ip = 1, #pl, my(e = pl[ip], k = lift(g0^((e * znlog(xa, G)) % (p - 1))), Ek, dim, chiexp, d);
+    for(ip = 1, #pl, my(e = pl[ip], k = lift(g0^((e * znlog(xa, G)) % (p - 1))), Ek, dim, chiexp, dpsi);
       tt = getabstime();
       Ek = matker(Tm - k);
       if(#Ek && matsize(rows)[1], Ek = Ek * matker(rows * Ek));
       dim = #Ek;
-      chiexp = (om - e) % (p - 1); d = (p - 1) / gcd(concat(chiexp, [p - 1]));
-      listput(stats, [polM, k, d, dim]);
+      chiexp = (om - e) % (p - 1); dpsi = (p - 1) / gcd(concat(chiexp, [p - 1]));
+      listput(stats, [polM, k, dpsi, dim]);
       tm[3] += getabstime() - tt;
       if(dim == 0, next);
       my(LN = sv_lines(dim, p));
@@ -398,7 +417,7 @@ solvfields(p, S, flag = 0) =
         fpol = polredbest([fpol, listP]);
         fpol = polredabs([fpol, Sp]);
         tm[6] += getabstime() - tt;
-        listput(res, [fpol, d]))));
+        listput(res, [fpol, dpsi]))));
   res = Vec(res);
   res = vecsort(res, r -> [abs(nfdisc([r[1], Sp])), Vec(r[1])]);
   SVTIME = concat([getabstime() - t0], tm);
@@ -410,7 +429,7 @@ solvfields(p, S, flag = 0) =
   sv_verify(res,p,S);
   cnts=solvcount(p,S,flag==0);
   cnts2=[];
-  for(j=1,#cnts,if(cnts[j]>0,cnts2=concat(cnts2,[[j,cnts[j]]])));
+  for(j=1,#cnts,if(cnts[j]>0 && (!d || j==d),cnts2=concat(cnts2,[[j,cnts[j]]])));
   cntsfound=vecsort(mult(apply(z->z[2],res)),[1]);
   if(cntsfound!=cnts2, print("Counts do not match: ",cnts2," vs ",cntsfound);error("BAD"));
   apply(z->z[1], res);
